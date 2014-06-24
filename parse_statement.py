@@ -67,7 +67,7 @@ def get_statement_text(filename):
 
 def date_with_year(date, closing_month, closing_year):
     month, day = date.split('/')
-    if month != closing_month:
+    if month != closing_month and month == '12':
         year = str(int(closing_year) - 1)  # December
     else:
         year = closing_year
