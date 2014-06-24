@@ -51,7 +51,20 @@ def get_statement_text(filename):
     return page2txt
 
 
+def date_with_year(date, closing_month, closing_year):
+    month, day = date.split('/')
+    if month != closing_month:
+        year = str(int(closing_year) - 1)  # December
+    else:
+        year = closing_year
+    return '/'.join((month, day, year))
+
+
 def parse_purchases(page2txt):
+    closing_date = (next(line for line in page2txt[0].split('\n')
+                         if line.startswith('Opening/Closing Date'))
+                    .strip().split()[-1])
+    closing_month, closing_day, closing_year = closing_date.split('/')
 
     valid_regexes = map(re.compile, [
         r'^[0-9]{2}/[0-9]{2} .* -?[0-9,]*\.\d{2}',  # purchase
@@ -89,10 +102,12 @@ def parse_purchases(page2txt):
             else:
                 itinerary = list(reversed(current_itinerary_reversed))
             fields = line.split()
-            date = fields[0]
+            date = date_with_year(fields[0], closing_month, closing_year)
             amount = fields[-1]
             state = fields[-2]
             merchant_city = fields[1:-2]
+            if merchant_city[0] == '&':
+                merchant_city = merchant_city[1:]
             purchases.append(
                 Purchase(date, merchant_city, state, amount, itinerary,
                          foreign_amount, exchange_rate, exchange_date,
