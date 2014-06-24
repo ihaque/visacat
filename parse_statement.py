@@ -1,5 +1,6 @@
 from cStringIO import StringIO
 from collections import namedtuple
+import csv
 import re
 
 from pdfminer.pdfinterp import PDFResourceManager
@@ -28,6 +29,19 @@ class Purchase(_purchase_base):
                 padded_itin.append("       %s" % line)
             rep += '\n\t%s' % '\n\t'.join(padded_itin)
         return rep
+
+
+def purchases_to_csv(purchases, stream):
+    order = ('date', 'merchant', 'state', 'itinerary', 'amount')
+    def todict(purchase):
+        return {'date': purchase.date,
+                'merchant': ' '.join(purchase.merchant_city),
+                'amount': purchase.amount,
+                'itinerary': ('; '.join(purchase.itinerary)
+                             if purchase.itinerary else ''),
+                'state': purchase.state}
+    writer = csv.DictWriter(stream, order)
+    map(writer.writerow, map(todict, purchases))
 
 
 def get_statement_text(filename):
@@ -103,7 +117,7 @@ def parse_purchases(page2txt):
                 itinerary = list(reversed(current_itinerary_reversed))
             fields = line.split()
             date = date_with_year(fields[0], closing_month, closing_year)
-            amount = fields[-1]
+            amount = fields[-1].replace(',','')
             state = fields[-2]
             merchant_city = fields[1:-2]
             if merchant_city[0] == '&':
@@ -128,6 +142,8 @@ def parse_purchases(page2txt):
     return list(reversed(purchases))
 
 import sys
+purchases = []
 for fn in sys.argv[1:]:
-    for purchase in parse_purchases(get_statement_text(fn)):
-        print purchase
+    purchases.extend(parse_purchases(get_statement_text(fn)))
+
+purchases_to_csv(purchases, sys.stdout)
